@@ -1,0 +1,53 @@
+try:
+    import iris
+
+    class Cursor(iris.irissdk.dbapiCursor): pass
+
+    class DataRow(iris.irissdk.dbapiDataRow): pass
+
+except ImportError:
+    pass
+
+# globals
+apilevel = "2.0"
+threadsafety = 0
+paramstyle = "qmark"
+
+class Error(Exception):
+    pass
+
+
+class Warning(Exception):
+    pass
+
+
+class InterfaceError(Error):
+    pass
+
+
+class DatabaseError(Error):
+    pass
+
+
+class InternalError(DatabaseError):
+    pass
+
+
+class OperationalError(DatabaseError):
+    pass
+
+
+class ProgrammingError(DatabaseError):
+    pass
+
+
+class IntegrityError(DatabaseError):
+    pass
+
+
+class DataError(DatabaseError):
+    pass
+
+
+class NotSupportedError(DatabaseError):
+    pass
