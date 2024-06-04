@@ -8,6 +8,9 @@ try:
 except ImportError:
     pass
 
+def connect(*args, **kwargs):
+    return iris.connect(*args, **kwargs)
+
 # globals
 apilevel = "2.0"
 threadsafety = 0
