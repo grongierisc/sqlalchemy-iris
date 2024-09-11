@@ -91,7 +91,6 @@ from .types import IRISTime
 from .types import IRISTimeStamp
 from .types import IRISDate
 from .types import IRISDateTime
-from .types import IRISUniqueIdentifier
 from .types import IRISListBuild  # noqa
 from .types import IRISVector  # noqa
 
@@ -106,8 +105,8 @@ ischema_names = {
     "LONGVARCHAR": LONGVARCHAR,
     "NUMERIC": NUMERIC,
     "SMALLINT": SMALLINT,
-    "TIME": TIME,
-    "TIMESTAMP": TIMESTAMP,
+    "TIME": IRISTime,
+    "TIMESTAMP": IRISTimeStamp,
     "TINYINT": TINYINT,
     "VARBINARY": VARBINARY,
     "VARCHAR": VARCHAR,
@@ -592,6 +591,12 @@ class IRISCompiler(sql.compiler.SQLCompiler):
             self.process(binary.right, **kw),
         )
 
+    def visit_concat_func(
+        self, func, **kw
+    ):
+        args = [self.process(clause, **kw) for clause in func.clauses.clauses]
+        return ' || '.join(args)
+
     def visit_mod_binary(self, binary, operator, **kw):
         return (
             self.process(binary.left, **kw) + " # " + self.process(binary.right, **kw)
@@ -819,8 +824,11 @@ colspecs = {
     sqltypes.DateTime: IRISDateTime,
     sqltypes.TIMESTAMP: IRISTimeStamp,
     sqltypes.Time: IRISTime,
-    sqltypes.UUID: IRISUniqueIdentifier,
 }
+if sqlalchemy_version.startswith("2."):
+    from .types import IRISUniqueIdentifier
+
+    colspecs[sqltypes.UUID] = IRISUniqueIdentifier
 
 
 class IRISExact(ReturnTypeFromArgs):
@@ -909,30 +917,22 @@ class IRISDialect(default.DefaultDialect):
             if super_ is not None:
                 super_(conn)
 
-            if self.embedded:
-                self.supports_vectors = (
-                    conn.iris.cls("%SYSTEM.License").GetFeature(28) == 1
-                )
-            else:
-                try:
-                    with conn.cursor() as cursor:
-                        cursor.execute(text("SELECT TO_VECTOR('1,2,3', INT, 3)"))
-                    self.supports_vectors = True
-                except:  # noqa
-                    self.supports_vectors = False
-            if self.supports_vectors:
+            try:
                 with conn.cursor() as cursor:
                     # Distance or similarity
                     cursor.execute(
                         "select vector_cosine(to_vector('1'), to_vector('1'))"
                     )
-                    self.vector_cosine_similarity = cursor.fetchone()[0] == 0
-
+                self.supports_vectors = True
+            except:  # noqa
+                self.supports_vectors = False
             self._dictionary_access = False
             with conn.cursor() as cursor:
                 cursor.execute("%CHECKPRIV SELECT ON %Dictionary.PropertyDefinition")
                 self._dictionary_access = cursor.sqlcode == 0
 
+            # if not self.supports_vectors:
+            #     util.warn("No native support for VECTOR or not activated by license")
             if not self._dictionary_access:
                 util.warn(
                     """
@@ -960,6 +960,11 @@ There are no access to %Dictionary, may be required for some advanced features,
             if row:
                 return row[0]
         return None
+
+    def get_isolation_level_values(self, dbapi_connection):
+        levels = set(self._isolation_lookup)
+        levels.add("AUTOCOMMIT")
+        return levels
 
     def get_isolation_level(self, connection):
         try:
