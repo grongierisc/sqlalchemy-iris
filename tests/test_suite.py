@@ -3,9 +3,19 @@ from enum import Enum
 from sqlalchemy.testing.suite import FetchLimitOffsetTest as _FetchLimitOffsetTest
 from sqlalchemy.testing.suite import CompoundSelectTest as _CompoundSelectTest
 from sqlalchemy.testing.suite import ComputedColumnTest as _ComputedColumnTest
+from sqlalchemy.testing.suite import DeprecatedCompoundSelectTest as _DeprecatedCompoundSelectTest
 from sqlalchemy.testing.suite import DateHistoricTest as _DateHistoricTest
+from sqlalchemy.testing.suite import DateTimeMicrosecondsTest as _DateTimeMicrosecondsTest
+from sqlalchemy.testing.suite import DateTimeTest as _DateTimeTest
+from sqlalchemy.testing.suite import DateTimeHistoricTest as _DateTimeHistoricTest
 from sqlalchemy.testing.suite import DateTimeCoercedToDateTimeTest as _DateTimeCoercedToDateTimeTest
 from sqlalchemy.testing.suite import DateTest as _DateTest
+from sqlalchemy.testing.suite import ExistsTest as _ExistsTest
+from sqlalchemy.testing.suite import HasIndexTest as _HasIndexTest
+from sqlalchemy.testing.suite import ExpandingBoundInTest as _ExpandingBoundInTest
+from sqlalchemy.testing.suite import OrderByLabelTest as _OrderByLabelTest
+from sqlalchemy.testing.suite import InsertBehaviorTest as _InsertBehaviorTest
+from sqlalchemy.testing.suite import AutocommitIsolationTest as _AutocommitIsolationTest
 from sqlalchemy.testing.suite import CTETest as _CTETest
 from sqlalchemy.testing.suite import DifficultParametersTest as _DifficultParametersTest
 from sqlalchemy.testing.suite import (
@@ -32,51 +42,36 @@ import pytest
 
 from sqlalchemy.testing.suite import *  # noqa
 
-class DateHistoricTest(_DateHistoricTest):
-    @pytest.mark.skipif(config.db.dialect.driver == "intersystems", reason="Segmentation fault here")
-    def test_null(self):
+class BooleanTest(_BooleanTest):
+    def test_null(self, connection):
+        return super().test_null(connection)
+
+class InsertBehaviorTest(_InsertBehaviorTest):
+    @pytest.mark.skipif(config.db.dialect.driver == "intersystems", reason="Fetch not supported after close")
+    def test_autoclose_on_insert(self, connection):
         pass
 
-    @pytest.mark.skipif(config.db.dialect.driver == "intersystems", reason="Segmentation fault here")
-    def test_null_bound_comparison(self):
-        pass
+# class AutocommitIsolationTest(_AutocommitIsolationTest):
+#     @pytest.mark.skipif(config.db.dialect.driver == "intersystems", reason="Segfault here")
+#     def test_autocommit_on(self):
+#         pass
 
-@pytest.mark.skipif(config.db.dialect.driver == "intersystems", reason="Not supported")
-class DateTest(_DateTest):
-    pass
+#     @pytest.mark.skipif(config.db.dialect.driver == "intersystems", reason="Segfault here")
+#     def test_turn_autocommit_off_via_default_iso_level(self):
+#         pass
 
-@pytest.mark.skipif(config.db.dialect.driver == "intersystems", reason="Not supported")
-class DateTimeCoercedToDateTimeTest(_DateTimeCoercedToDateTimeTest):
-    pass
+# class CompoundSelectTest(_CompoundSelectTest):
+#     @pytest.mark.skip()
+#     def test_limit_offset_aliased_selectable_in_unions(self):
+#         return
 
-class CompoundSelectTest(_CompoundSelectTest):
-    @pytest.mark.skip()
-    def test_limit_offset_aliased_selectable_in_unions(self):
-        return
+#     @pytest.mark.skipif(config.db.dialect.driver == "intersystems", reason="Segfault here")
+#     def test_limit_offset_in_unions_from_alias(self):
+#         return
 
-    @pytest.mark.skipif(config.db.dialect.driver == "intersystems", reason="Segmentation fault here")
-    def test_distinct_selectable_in_unions(self):
-        return
-
-    @pytest.mark.skipif(config.db.dialect.driver == "intersystems", reason="Segmentation fault here")
-    def test_limit_offset_selectable_in_unions(self):
-        return
-
-    @pytest.mark.skipif(config.db.dialect.driver == "intersystems", reason="Segmentation fault here")
-    def test_order_by_selectable_in_unions(self):
-        return
-
-    @pytest.mark.skipif(config.db.dialect.driver == "intersystems", reason="Segmentation fault here")
-    def test_plain_union(self):
-        return
-
-    @pytest.mark.skipif(config.db.dialect.driver == "intersystems", reason="Segmentation fault here")
-    def test_limit_offset_in_unions_from_alias(self):
-        return
-
-    @pytest.mark.skipif(config.db.dialect.driver == "intersystems", reason="Segmentation fault here")
-    def test_select_from_plain_union(self):
-        return
+#     @pytest.mark.skipif(config.db.dialect.driver == "intersystems", reason="Segmentation fault here")
+#     def test_select_from_plain_union(self):
+#         return
 
 class ComputedColumnTest(_ComputedColumnTest):
     @pytest.mark.skipif(config.db.dialect.driver == "intersystems", reason="Segmentation fault here")
@@ -93,12 +88,6 @@ class CTETest(_CTETest):
 class DifficultParametersTest(_DifficultParametersTest):
     pass
 
-@pytest.mark.skip()
-class AutocommitIsolationTest(fixtures.TestBase):
-
-    @pytest.mark.skipif(config.db.dialect.driver == "intersystems", reason="Segmentation fault here")
-    def test_autocommit_on(self):
-        pass
 
 @pytest.mark.skip()
 class BinaryTest(_BinaryTest):
@@ -106,16 +95,9 @@ class BinaryTest(_BinaryTest):
     def test_round_trip(self):
         pass
 
-class BooleanTest(_BooleanTest):
-    @pytest.mark.skipif(config.db.dialect.driver == "intersystems", reason="Segmentation fault here")
-    def test_round_trip(self):
-        pass
-
-    @pytest.mark.skipif(config.db.dialect.driver == "intersystems", reason="Segmentation fault here")
-    def test_whereclause(self):
-        pass
 
 class FetchLimitOffsetTest(_FetchLimitOffsetTest):
+
     def test_simple_offset_no_order(self, connection):
         table = self.tables.some_table
         self._assert_result(

@@ -50,13 +50,14 @@ def start_container(opt, file_config):
         password="sqlalchemy",
         namespace="TEST",
     )
-    iris.start()
-    print("dburi:", iris.get_connection_url())
-    opt.dburi = [iris.get_connection_url()]
+    # iris.start()
+    # print("dburi:", iris.get_connection_url())
+    # opt.dburi = [iris.get_connection_url()]
+    opt.dburi = ["iris+intersystems://SuperUser:SYS@localhost:51773/USER"]
 
 
 def pytest_unconfigure(config):
     global iris
     if iris:
         print("Stopping IRIS container")
-        iris.stop()
+        # iris.stop()

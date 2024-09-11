@@ -5,11 +5,17 @@
   "version": "0.2.0",
   "configurations": [
     {
+        "name": "Debug Unit Test",
+        "type": "python",
+        "request": "test",
+        "justMyCode": false,
+    },
+    {
       "name": "Python: Module",
       "type": "python",
       "request": "launch",
       "module": "pytest",
-      "justMyCode": false
+      "justMyCode": false,
     }
   ]
 }
