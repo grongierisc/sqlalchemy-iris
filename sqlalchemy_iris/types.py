@@ -6,12 +6,31 @@ from sqlalchemy.types import UserDefinedType
 from uuid import UUID as _python_UUID
 from sqlalchemy import __version__ as sqlalchemy_version
 
-try:
-    from intersystems_iris import IRISList
-except ImportError:
-    pass
-
 HOROLOG_ORDINAL = datetime.date(1840, 12, 31).toordinal()
+
+
+def _decode_uuid_value(value):
+    if isinstance(value, bytes):
+        return value.decode()
+    return value
+
+
+def _get_iris_list_class():
+    try:
+        from intersystems_iris import IRISList
+
+        return IRISList
+    except ImportError:
+        pass
+
+    try:
+        from iris import IRISList
+
+        return IRISList
+    except ImportError:
+        pass
+
+    raise ImportError("IRISList is not available in this Python runtime")
 
 
 class IRISBoolean(sqltypes.Boolean):
@@ -63,6 +82,8 @@ class IRISDate(sqltypes.Date):
     def literal_processor(self, dialect):
         def process(value):
             if isinstance(value, datetime.date):
+                if getattr(dialect, "embedded", False):
+                    return str(value.toordinal() - HOROLOG_ORDINAL)
                 return "'%s'" % value.strftime("%Y-%m-%d")
             return value
 
@@ -100,6 +121,8 @@ class IRISTimeStamp(sqltypes.DateTime):
         def process(value):
             if isinstance(value, datetime.datetime):
                 return "'%s'" % value.strftime("%Y-%m-%d %H:%M:%S.%f")
+            if isinstance(value, datetime.date):
+                return "'%s 00:00:00.000000'" % value.strftime("%Y-%m-%d")
             return value
 
         return process
@@ -124,6 +147,10 @@ class IRISDateTime(sqltypes.DateTime):
                 if "." not in value:
                     value += ".0"
                 return datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
+            if isinstance(value, int):
+                value -= (2**60) if value > 0 else -(2**61 * 3)
+                value = value / 1000000
+                return datetime.datetime.utcfromtimestamp(value)
             return value
 
         return process
@@ -132,6 +159,8 @@ class IRISDateTime(sqltypes.DateTime):
         def process(value):
             if isinstance(value, datetime.datetime):
                 return "'%s'" % value.strftime("%Y-%m-%d %H:%M:%S.%f")
+            if isinstance(value, datetime.date):
+                return "'%s 00:00:00.000000'" % value.strftime("%Y-%m-%d")
             return value
 
         return process
@@ -140,9 +169,18 @@ class IRISDateTime(sqltypes.DateTime):
 class IRISTime(sqltypes.DateTime):
     __visit_name__ = "TIME"
 
+    @staticmethod
+    def _to_horolog(value):
+        result = value.hour * 3600 + value.minute * 60 + value.second
+        if value.microsecond:
+            result += value.microsecond / 1000000
+        return result
+
     def bind_processor(self, dialect):
         def process(value):
             if value is not None:
+                if getattr(dialect, "embedded", False):
+                    return self._to_horolog(value)
                 return value.strftime("%H:%M:%S.%f")
             return value
 
@@ -156,13 +194,13 @@ class IRISTime(sqltypes.DateTime):
                 if "." not in value:
                     value += ".0"
                 return datetime.datetime.strptime(value, "%H:%M:%S.%f").time()
-            if isinstance(value, int) or isinstance(value, Decimal):
+            if isinstance(value, int) or isinstance(value, float) or isinstance(value, Decimal):
                 horolog = value
                 hour = int(horolog // 3600)
                 horolog -= int(hour * 3600)
                 minute = int(horolog // 60)
                 second = int(horolog % 60)
-                micro = int(value % 1 * 1000000)
+                micro = round(value % 1 * 1000000)
                 return datetime.time(hour, minute, second, micro)
             return value
 
@@ -171,6 +209,8 @@ class IRISTime(sqltypes.DateTime):
     def literal_processor(self, dialect):
         def process(value):
             if isinstance(value, datetime.time):
+                if getattr(dialect, "embedded", False):
+                    return str(self._to_horolog(value))
                 return "'%s'" % value.strftime("%H:%M:%S.%f")
             return value
 
@@ -226,6 +266,7 @@ if sqlalchemy_version.startswith("2."):
                 if self.as_uuid:
 
                     def process(value):
+                        value = _decode_uuid_value(value)
                         if value and not isinstance(value, _python_UUID):
                             value = _python_UUID(value)
                         return value
@@ -234,6 +275,7 @@ if sqlalchemy_version.startswith("2."):
                 else:
 
                     def process(value):
+                        value = _decode_uuid_value(value)
                         if value and isinstance(value, _python_UUID):
                             value = str(value)
                         return value
@@ -243,6 +285,7 @@ if sqlalchemy_version.startswith("2."):
                 if not self.as_uuid:
 
                     def process(value):
+                        value = _decode_uuid_value(value)
                         if value and isinstance(value, _python_UUID):
                             value = str(value)
                         return value
@@ -272,6 +315,7 @@ class IRISListBuild(UserDefinedType):
 
     def bind_processor(self, dialect):
         def process(value):
+            IRISList = _get_iris_list_class()
             irislist = IRISList()
             if not value:
                 return value
@@ -286,8 +330,12 @@ class IRISListBuild(UserDefinedType):
     def result_processor(self, dialect, coltype):
         def process(value):
             if value:
+                IRISList = _get_iris_list_class()
                 irislist = IRISList(value)
-                return irislist._list_data
+                list_data = getattr(irislist, "_list_data", None)
+                if list_data is not None:
+                    return list_data
+                return [irislist.get(index) for index in range(1, irislist.count() + 1)]
             return value
 
         return process
@@ -296,6 +344,7 @@ class IRISListBuild(UserDefinedType):
         def func(self, funcname: str, other):
             if not isinstance(other, list) and not isinstance(other, tuple):
                 raise ValueError("expected list or tuple, got '%s'" % type(other))
+            IRISList = _get_iris_list_class()
             irislist = IRISList()
             for item in other:
                 irislist.add(item)
@@ -335,6 +384,9 @@ class IRISVector(UserDefinedType):
             return f"[{','.join([str(v) for v in value])}]"
 
         return process
+
+    def bind_expression(self, bindvalue):
+        return func.to_vector(bindvalue, text(self.item_type_server))
 
     def result_processor(self, dialect, coltype):
         def process(value):

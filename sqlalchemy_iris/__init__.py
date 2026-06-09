@@ -30,10 +30,8 @@ from .base import IRISVector
 
 base.dialect = dialect = intersystems_dialect
 
-# _registry.register("iris.iris", "sqlalchemy_iris.iris", "IRISDialect_iris")
-# _registry.register("iris.emb", "sqlalchemy_iris.embedded", "IRISDialect_emb")
-# _registry.register("iris.irisasync", "sqlalchemy_iris.irisasync", "IRISDialect_irisasync")
 _registry.register("iris.iris", "sqlalchemy_iris.intersystems", "IRISDialect_intersystems")
+_registry.register("iris.emb", "sqlalchemy_iris.embedded", "IRISDialect_emb")
 _registry.register("iris.intersystems", "sqlalchemy_iris.intersystems", "IRISDialect_intersystems")
 
 __all__ = [

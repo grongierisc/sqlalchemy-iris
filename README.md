@@ -6,8 +6,8 @@ An InterSystems IRIS dialect for SQLAlchemy.
 Pre-requisites
 ---
 
-This dialect requires SQLAlchemy, InterSystems DB-API driver. They are specified as requirements so ``pip``
-will install them if they are not already in place. To install, just:
+This dialect requires SQLAlchemy, InterSystems DB-API driver, and iris-embedded-python-wrapper. They are
+specified as requirements so ``pip`` will install them if they are not already in place. To install, just:
 
 ```shell
 pip install sqlalchemy-iris
@@ -29,7 +29,7 @@ from sqlalchemy import create_engine
 engine = create_engine("iris://_SYSTEM:SYS@localhost:1972/USER")
 ```
 
-To use with Python Embedded mode, when run next to IRIS
+To use with Python Embedded mode through iris-embedded-python-wrapper, when run next to IRIS
 
 ```python
 from sqlalchemy import create_engine

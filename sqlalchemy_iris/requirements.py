@@ -243,7 +243,11 @@ class Requirements(SuiteRequirements, AlembicRequirements):
     def get_isolation_levels(self, config):
         levels = set(config.db.dialect._isolation_lookup)
 
-        default = "READ UNCOMMITTED"
+        default = (
+            "READ COMMITTED"
+            if config.db.dialect.driver == "emb"
+            else "READ UNCOMMITTED"
+        )
         levels.add("AUTOCOMMIT")
 
         return {"default": default, "supported": levels}
@@ -1153,7 +1157,10 @@ class Requirements(SuiteRequirements, AlembicRequirements):
         a string.
         """
 
-        return exclusions.open()
+        return exclusions.skip_if(
+            lambda config: getattr(config.db.dialect, "embedded", False),
+            "embedded DBAPI returns untyped Decimal binds as strings",
+        )
 
     @property
     def numeric_received_as_decimal_untyped(self):

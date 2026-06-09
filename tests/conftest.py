@@ -9,9 +9,6 @@ from testcontainers.iris import IRISContainer
 registry.register("iris.iris", "sqlalchemy_iris.iris", "IRISDialect_iris")
 registry.register("iris.emb", "sqlalchemy_iris.embedded", "IRISDialect_emb")
 registry.register(
-    "iris.irisasync", "sqlalchemy_iris.irisasync", "IRISDialect_irisasync"
-)
-registry.register(
     "iris.intersystems", "sqlalchemy_iris.intersystems", "IRISDialect_intersystems"
 )
 

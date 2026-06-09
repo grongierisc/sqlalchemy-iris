@@ -7,7 +7,7 @@ try:
     class DataRow(iris.irissdk.dbapiDataRow):
         pass
 
-except ImportError:
+except (AttributeError, ImportError, TypeError):
     pass
 
 
