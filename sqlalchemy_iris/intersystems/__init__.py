@@ -4,7 +4,6 @@ from ..base import IRISDialect
 from ..base import IRISExecutionContext
 from . import dbapi
 from .dbapi import connect
-from .dbapi import IntegrityError, OperationalError, DatabaseError
 from sqlalchemy.engine.cursor import CursorFetchStrategy
 
 
@@ -17,6 +16,7 @@ def remap_exception(func):
                 cursor.sqlcode = 0
                 return func(cursor, *args, **kwargs)
             except RuntimeError as ex:
+                dbapi._sync_exception_classes()
                 # [SQLCODE: <-119>:...
                 message = ex.args[0]
                 if "<LIST ERROR>" in message:
@@ -27,10 +27,13 @@ def remap_exception(func):
                     raise Exception(message)
                 sqlcode = int(sqlcode[0])
                 if abs(sqlcode) in [108, 119, 121, 122]:
-                    raise IntegrityError(sqlcode, message)
+                    raise dbapi.IntegrityError(sqlcode, message)
                 if abs(sqlcode) in [1, 12]:
-                    raise OperationalError(sqlcode, message)
-                raise DatabaseError(sqlcode, message)
+                    raise dbapi.OperationalError(sqlcode, message)
+                raise dbapi.DatabaseError(sqlcode, message)
+            except Exception:
+                dbapi._sync_exception_classes()
+                raise
 
     return wrapper
 
@@ -153,7 +156,6 @@ class IRISDialect_intersystems(IRISDialect):
             with connection.cursor() as cursor:
                 cursor.execute("SET TRANSACTION ISOLATION LEVEL " + level_str)
 
-"""
     @remap_exception
     def do_execute(self, cursor, query, params, context=None):
         if query.endswith(";"):
@@ -170,6 +172,5 @@ class IRISDialect_intersystems(IRISDialect):
             params = [param[0] if len(param) else None for param in params]
         cursor.executemany(query, params)
 
-"""
 
 dialect = IRISDialect_intersystems

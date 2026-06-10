@@ -8,11 +8,15 @@ try:
         pass
 
 except (AttributeError, ImportError, TypeError):
-    pass
+    iris = None
 
 
 def connect(*args, **kwargs):
-    return iris.connect(*args, **kwargs)
+    _sync_exception_classes()
+    try:
+        return iris.connect(*args, **kwargs)
+    finally:
+        _sync_exception_classes()
 
 
 def createIRIS(*args, **kwargs):
@@ -29,7 +33,6 @@ STRING = str
 BINARY = bytes
 NUMBER = float
 ROWID = str
-
 
 class Error(Exception):
     pass
@@ -69,3 +72,30 @@ class DataError(DatabaseError):
 
 class NotSupportedError(DatabaseError):
     pass
+
+
+_EXCEPTION_NAMES = (
+    "Error",
+    "Warning",
+    "InterfaceError",
+    "DatabaseError",
+    "InternalError",
+    "OperationalError",
+    "ProgrammingError",
+    "IntegrityError",
+    "DataError",
+    "NotSupportedError",
+)
+
+
+def _sync_exception_classes():
+    if iris is None or not hasattr(iris, "dbapi"):
+        return
+
+    for name in _EXCEPTION_NAMES:
+        cls = getattr(iris.dbapi, name, None)
+        if cls is not None:
+            globals()[name] = cls
+
+
+_sync_exception_classes()

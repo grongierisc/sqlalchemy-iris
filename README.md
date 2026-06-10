@@ -33,8 +33,10 @@ To use with Python Embedded mode through iris-embedded-python-wrapper, when run 
 
 ```python
 from sqlalchemy import create_engine
-engine = create_engine("iris+emb:///USER")
+engine = create_engine("iris+emb://USER")
 ```
+
+The legacy path form `iris+emb:///USER` is also supported.
 
 To use with InterSystems official driver, does not work in Python Embedded mode
 

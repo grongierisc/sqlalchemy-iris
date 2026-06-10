@@ -46,10 +46,16 @@ class IRISDialect_emb(IRISDialect):
         return iris.dbapi
 
     def create_connect_args(self, url):
-        if url.host or url.port or url.username or url.password:
+        if url.port or url.username or url.password:
             raise exc.ArgumentError(
                 "iris+emb:// URLs are local-only; use iris:// or iris+intersystems:// "
                 "for host, port, username, or password connections"
+            )
+
+        if url.host and url.database:
+            raise exc.ArgumentError(
+                "iris+emb:// URLs accept the namespace as either "
+                "iris+emb://NAMESPACE or iris+emb:///NAMESPACE, not both"
             )
 
         supported_query_args = {"path"}
@@ -62,7 +68,7 @@ class IRISDialect_emb(IRISDialect):
 
         opts = {
             "mode": "embedded",
-            "namespace": url.database if url.database else "USER",
+            "namespace": url.host or url.database or "USER",
         }
         path = url.query.get("path")
         if path is not None:
